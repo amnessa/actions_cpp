@@ -31,12 +31,26 @@ public:
             std::bind(&CountUntilClientNode::goal_result_callback,this, _1);
         options.goal_response_callback = 
             std::bind(&CountUntilClientNode::goal_response_callback,this, _1);
+        options.feedback_callback=
+            std::bind(&CountUntilClientNode::goal_feedback_callback,this,_1,_2);
 
         // Send the goal
         RCLCPP_INFO(this->get_logger(), "Sending a goal");
         count_until_client_->async_send_goal(goal, options);
+
+        // Cancel the goal(test)
+        /*timer_ = this->create_wall_timer(
+            std::chrono::seconds(2),
+            std::bind(&CountUntilClientNode::timer_callback,this)); 
+        */
     }
 private:
+    void timer_callback()
+    {   
+        RCLCPP_INFO(this->get_logger(),"Cancel the goal");
+        count_until_client_->async_cancel_goal(goal_handle_);
+        timer_->cancel();
+    }
     // Callback to know if the goal was accepted or rejected
     void goal_response_callback(const CountUntilGoalHandle::SharedPtr &goal_handle)
     {
@@ -44,7 +58,8 @@ private:
         {
             RCLCPP_INFO(this->get_logger(), "Goal got rejected"); 
         }else
-        {
+        {   
+            this->goal_handle_ =goal_handle;
             RCLCPP_INFO(this->get_logger(), "Goal got accepted");
         }
     }
@@ -59,13 +74,26 @@ private:
         }else if(status == rclcpp_action::ResultCode::ABORTED)
         {
             RCLCPP_ERROR(this->get_logger(), "Aborted"); 
+        }else if(status == rclcpp_action::ResultCode::CANCELED)
+        {
+            RCLCPP_ERROR(this->get_logger(), "Cancelled");
         }
         int reached_number = result.result->reached_number;
         RCLCPP_INFO(this->get_logger(),"Result: %d",reached_number);
     }
-
-    rclcpp_action::Client<CountUntil>::SharedPtr count_until_client_;
     
+    // Callback to receive feedback during goal execution
+    void goal_feedback_callback(const CountUntilGoalHandle::SharedPtr &goal_handle, 
+        const std::shared_ptr<const CountUntil::Feedback> feedback)
+    {   
+        (void)goal_handle;
+        int number = feedback->current_number;
+        RCLCPP_INFO(this->get_logger(),"Got feedback: %d",number);
+    }
+    
+    rclcpp_action::Client<CountUntil>::SharedPtr count_until_client_;
+    rclcpp::TimerBase::SharedPtr timer_;
+    CountUntilGoalHandle::SharedPtr goal_handle_;
     };
 
 
