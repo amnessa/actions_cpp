@@ -24,6 +24,7 @@ install(TARGETS
   count_until_server
   count_until_client
   count_until_server_queue_goals
+  count_until_server_lifecycle
   DESTINATION lib/${PROJECT_NAME}/
 )
 
